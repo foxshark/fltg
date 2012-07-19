@@ -1,0 +1,270 @@
+<html>
+<head>
+<title>FlickPress Prototype</title>
+<SCRIPT LANGUAGE="JavaScript" SRC="jquery-1.7.2.min.js"></script> 
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable = no">
+</head>
+
+<body>
+<style>
+body{
+	border:0;
+	margin:0;
+	padding:0;
+}
+
+#container{
+	background: #aaa;
+	width: 350px;
+	height: 440px;
+}
+
+.applist{
+	font-weight:normal;
+	text-decoration:none;
+}
+
+.applist li{
+	border: 1px solid #555;
+	padding:0;
+	margin: 1px 0;
+	text-decoration: none;
+	background: #999;
+}
+
+.applist .picimg{
+	background: #777;
+	margin: 4px;
+}
+
+#photolist{
+	border:1px solid #7777FF;
+	margin: 10px 4%;
+}
+
+#photolist ul{
+	border:1px #FF0000 solid;
+}
+#gallery img{
+	float:left;
+	margin:5px;
+}
+
+.photo_list_line{
+	list-style-type: none;
+	margin:0;
+	padding:0;
+}
+
+.photo_list_line .container_cell{
+	float: left;
+	margin-top: 20px;
+}
+.pic_container_m{
+	height: 200px;
+	width:	200px;
+	background-repeat:no-repeat;
+	background-position:center center;
+	border: 1px solid #77FF77;
+	background-size:cover;
+}
+.ownername{
+	display:none;
+}
+.pic_info{
+	display:none;
+}
+
+.clear{
+	clear:both;
+}
+</style>
+<div id="links">
+</div>
+<div id="container">
+
+</div>
+<div id="gallery">
+
+</div>
+
+<div class="clear"></div>
+<div id="taglist"></div>
+<div id="photolist"><div>
+</body>
+
+<!--
+a href="http://www.flickr.com/photos/49325953@N07/7459056518/"
+title="Evening Pass by foxshark, on Flickr"
+
+img src="http://farm9.staticflickr.com/8164/7459056518_27e2bb668b_s.jpg"
+width="75" height="75" alt="Evening Pass"
+-->
+<script text="javascript">
+$("#container").hide();
+flickr	= new Object();
+flickr.img_x	= 200;
+flickr.img_y	= 200;
+flickr.img_n = "s";
+/*
+if(min_size/3 > 150) {
+	flickr.img_x = 320;
+	flickr.img_y = 320;
+	flickr.img_n = "m";
+}
+*/
+
+/*	***	***	***	***	***
+***	***	ROTATION	***	***/
+var supportsOrientationChange = "onorientationchange" in window,
+    orientationEvent = supportsOrientationChange ? "orientationchange" : "resize";
+
+window.onresize = function() {
+	//alert('HOLY ROTATING SCREENS BATMAN:' + window.orientation + " " + $(window).width());
+	flowContent();
+};
+/*	***	END ROTATION	***/
+
+
+
+var viewport_w	= 0; //$(window).width();
+var viewport_h	= 0; //$(window).height();
+var min_size	= 0; //Math.min(viewport_w,viewport_h);
+var computed_margin = 0; //Math.floor((10+(extra_w/num_w))/2);
+var extra_w	= 0; //(0.9*viewport_w)%(flickr.img_x+10);
+var extra_h	= 0; //viewport_h%(flickr.img_y+10);
+var num_w	= 0; //Math.floor((.9*viewport_w)/(flickr.img_x+10));
+var num_h	= 0; //Math.floor(viewport_h/(flickr.img_y+10));
+
+flowContent();
+
+function flowContent()
+{
+	viewport_w	= $(window).width();
+	viewport_h	= $(window).height();
+	min_size	= Math.min(viewport_w,viewport_h);
+	extra_w	= (0.9*viewport_w)%(flickr.img_x+10);
+	extra_h	= viewport_h%(flickr.img_y+10);
+	num_w	= Math.floor((.9*viewport_w)/(flickr.img_x+10));
+	num_h	= Math.floor(viewport_h/(flickr.img_y+10));
+
+	computed_margin = Math.floor((10+(extra_w/num_w))/2);
+	$('#photolist').width(0.92*viewport_w);
+	//alert($("#photolist").width());
+	$('.container_cell').css('padding', computed_margin);
+	//setTimeout(function(){alert("wahwah: " + $(window).width());}, 2000);
+}
+
+function getHotTags()
+{
+	$.getJSON('http://www.flickr.com/services/rest/?',
+	{
+	method:	'flickr.tags.getHotList',
+	format:	'json',
+	api_key:'5eebfd853312f45b9da847cd972da949',
+	count:	'21',
+	nojsoncallback:'1'
+  	}, function(data) {
+		var items=[];
+
+		$.each(data.hottags.tag, function(key, val) {
+			items.push('<li id="tag_' + val.content + '">' + val._content + '</li>');
+		});
+		//alert(items.join(''));
+		$("<ul>", {
+			'class': 'my-new-list',
+			html: items.join('')
+		}).appendTo('#taglist');
+	}).error(function() { alert("error"); });
+}
+	getPhotosByTag("nikon");
+function getPhotosByTag(tag_string)
+{
+//	alert(num_w);
+$.getJSON('http://www.flickr.com/services/rest/?',
+{
+	method:	'flickr.photos.search',
+	format:	'json',
+	api_key:	'5eebfd853312f45b9da847cd972da949',
+	nojsoncallback	:'1',
+	tags: tag_string,
+	tag_mode: "all",
+	sort:	'interestingness-desc',
+	content_type: '1',
+	media:	'photos',
+	extras:	'owner_name,tags,views,url_sq,url_t,url_s,url_q,url_m,url_n,url_z, url_c, url_l, url_o',
+//	extras:	'description, license, date_upload, date_taken, owner_name, icon_server, original_format, last_update, geo, tags, machine_tags, o_dims, views, media, path_alias, url_sq, url_t, url_s, url_q, url_m, url_n, url_z, url_c, url_l, url_o'
+	per_page: (num_w*7),
+	}, function(data) {
+		var items=[];
+		$.each(data.photos.photo, function(key, val) {
+			var img = "";//'<img src="http://farm'+val.farm+'.staticflickr.com/'+val.server+'/'+val.id+'_'+val.secret+'_s.jpg" class="picimg" width="75" height="75">';
+			var info = [];
+			info.push("<p>");
+			$.each(val, function(sub_key, sub_val) {
+				info.push(sub_key+": "+sub_val+"<br>");	
+			});
+			info.push("</p>");
+		    	//items.push('<li id="' + key.id + '">' + wrapImage(val.url_sq,val.width_sq,val.height_sq) +'<div class="pic_container_m" style="background-image: url(\''+val.url_n+'\');"></div><div class="pic_info">'+info+'</div><div class="ownername">'+val.ownername+'</div></li>');
+			items.push('<div class="container_cell" style="margin: 0; padding: '+computed_margin+'px;"><div class="pic_container_m" style="background-image: url(\''+val.url_n+'\');"></div><div class="pic_info">'+info+'</div><div class="ownername">'+val.ownername+'</div></div>');
+
+		});
+		
+		$("<div>", {
+			'class': 'photo_list_line',
+			html: items.join('')
+		}).appendTo('#photolist');
+		$('<div class="clear"></div>').appendTo('#photolist');
+		
+
+
+
+//:[{"id":"6362872119", "owner":"97042891@N00", "secret":"9704050373", "server":"6237", "farm":7, "title":"Dia da Bandeira - Flag day", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6316531994", "owner":"97042891@N00", "secret":"22d5763d3c", "server":"6105", "farm":7, "title":"Ele \u00e9 Macaco de Imita\u00e7\u00e3o", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6623790845", "owner":"97042891@N00", "secret":"1782dd12e1", "server":"7014", "farm":8, "title":"Canal do Mangue na Avenida Presidente Vargas", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6775887171", "owner":"97042891@N00", "secret":"a3314955b2", "server":"7022", "farm":8, "title":"I \u2665 RIO", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"7111209705", "owner":"97042891@N00", "secret":"289a3db8aa", "server":"5445", "farm":6, "title":"Largo da Carioca", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6979855305", "owner":"97042891@N00", "secret":"d9a282ecd0", "server":"7191", "farm":8, "title":"Foto da Avenida Presidente Vargas { EXPLORE }", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"5237381155", "owner":"12090378@N05", "secret":"0a08960b62", "server":"5203", "farm":6, "title":"Ramon en Otzarreta", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6952189205", "owner":"97042891@N00", "secret":"376327f4f9", "server":"7040", "farm":8, "title":"Confeitaria Colombo - Restaurante Crist\u00f3v\u00e3o", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"2551611185", "owner":"49689920@N00", "secret":"23145808f8", "server":"3083", "farm":4, "title":"quase.c\u00e9u", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"7038965665", "owner":"97042891@N00", "secret":"11048fbc5d", "server":"7264", "farm":8, "title":"Vista Chinesa - P\u00e3o de A\u00e7\u00facar", "ispublic":1, "isfriend":0, "isfamily":0}]}, "stat":"ok"}
+	}).error(function() { alert("error"); });
+
+}	
+
+function wrapImage(img_url, img_w, img_h){
+	return '<img src="'+img_url+'" class="picimg" width="'+img_w+'" height="'+img_h+'">';
+}
+
+//getHotTags();
+
+//http://www.flickr.com/services/rest/?method=flickr.tags.getHotList&format=json&api_key=5eebfd853312f45b9da847cd972da949&count=20
+/*
+var jqxhr = $.getJSON("static_api.json", function() {
+  alert("success");
+}).error(function() { alert("error"); });
+*/
+/*
+var api_secret	= "366e95fbfc4f6135";
+var api_key	= "d0f0e7a58b7bc99f4e452e1e8d9e88d6";
+var api_sig 	= "ea034d05ef6c5a2bf35cdc8bebd078f5"; //"366e95fbfc4f6135api_keyd0f0e7a58b7bc99f4e452e1e8d9e88d6permsdelete";
+var frob	= "72157630524180748-1674f55b9ef643d0-49304623";
+//http://www.flickr.com/services/rest/?method=flickr.people.getPhotos&format=json&api_key=5eebfd853312f45b9da847cd972da949&user_id=49325953@N07
+
+
+//token sig: 08c9f409f48b7550c86abf365d73edcd
+//http://flickr.com/services/auth/?api_key=d0f0e7a58b7bc99f4e452e1e8d9e88d6&perms=delete&api_sig=ea034d05ef6c5a2bf35cdc8bebd078f5
+
+//http://www.flickr.com/services/rest/?method=flickr.auth.getToken&format=json&api_key=d0f0e7a58b7bc99f4e452e1e8d9e88d6&frob=72157630521805172-ab244dc255fd594e-49304623&api_sig=08c9f409f48b7550c86abf365d73edcd
+$('#links').append('<p>'+api_secret+'api_key'+api_key+'frob'+frob+'methodflickr.auth.getToken</p>');
+$('#links').append('<p><a href="http://www.flickr.com/services/rest/?method=flickr.auth.getToken&format=json&api_key='+api_key+'&frob='+frob+'&api_sig=15d7e0e1fd6a4ff9f6cf747ebe730f2c" target="_blank">getToken</p>');
+$.getJSON('static_api.json', function(data) {
+  var items = [];
+	items.push('<li>foxshark</li>');
+  $.each(data.photos.photo, function(key, val) {
+	var img = '<img src="http://farm'+val.farm+'.staticflickr.com/'+val.server+'/'+val.id+'_'+val.secret+'_s.jpg" class="picimg" width="75" height="75">';
+    items.push('<li id="' + key.id + '">' + img + val.title + '</li>');
+  });
+	items.push('<li>page '+data.photos.page+'/'+data.photos.pages+'</li>');
+  $('<ul/>', {
+    'class': 'applist',
+    html: items.join('')
+  }).appendTo('#container'); 
+});
+*/
+
+</script>
+
+</html>
