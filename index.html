@@ -11,6 +11,9 @@ body{
 	border:0;
 	margin:0;
 	padding:0;
+	background:#000;
+	color: #fff;
+	font-family: helvetica, arial, san-serif;
 }
 
 #container{
@@ -38,7 +41,7 @@ body{
 }
 
 #photolist{
-	border:1px solid #7777FF;
+	/*border:1px solid #7777FF;*/
 	margin: 10px 4%;
 }
 
@@ -63,22 +66,76 @@ body{
 .pic_container_m{
 	height: 200px;
 	width:	200px;
+	font-size:12px;
 	background-repeat:no-repeat;
 	background-position:center center;
 	border: 1px solid #77FF77;
 	background-size:cover;
+	overflow:hidden;
 }
 .ownername{
 	display:none;
 }
 .pic_info{
-	display:wnone;
+	display:none;
 }
 
 .clear{
 	clear:both;
 }
+
+.tag_link{
+	background: #CCCCFF;
+	color:#333;
+	text-decoration:none;
+}
+
+a.tag_link hover{
+	background: #3333CC;
+	color: #ffffff;
+}
+#tag_picker{
+	position:fixed;
+	top: 50px;
+	left: 0px;
+	height:400px;
+	width: 200px;
+	background: #222;
+	border:1px solid #111;
+	color: #CCC;
+	padding:10px;
+}
+#settings_pull{
+	position:fixed;
+	top: 0;
+	left: 0;
+	background: #222;
+	border-right:1px solid #333;
+	border-bottom: 1px solid #333;
+	color: #CCC;
+	padding:10px;
+	text-transform:uppercase;
+	font-family: helvetica, arial, san-serif;
+	font-size: 8px;
+}
+
+#settings_pull a, #settings_pull a:visited{
+	color:#fff;
+	text-decoration: none;
+}
+
+#settings_pull a:over, #settings_pull a:press {
+	color:#999;
+	background:#000;
+}
 </style>
+<!-- end CSS -->
+
+<div id="settings_pull">
+<a id="settings_pull_link" href="#" onClick="settings_show(); return false;">Settings</a>
+</div>
+
+<div id="tag_picker"></div>
 <div id="links">
 </div>
 <div id="container">
@@ -92,6 +149,7 @@ body{
 <div id="taglist"></div>
 <div id="photolist"><div>
 </body>
+
 
 <script text="javascript">
 $("#container").hide();
@@ -124,8 +182,10 @@ var extra_w	= 0; //(0.9*viewport_w)%(flickr.img_x+10);
 var extra_h	= 0; //viewport_h%(flickr.img_y+10);
 var num_w	= 0; //Math.floor((.9*viewport_w)/(flickr.img_x+10));
 var num_h	= 0; //Math.floor(viewport_h/(flickr.img_y+10));
-var tagcloud	= new Object();
-var numcloud	= new Array();
+var tagcloud	= new Object();	//List of tags and how many hits per tag
+var tagsortd	= new Array();	//sorted list of top tags ex: 0034_wedding
+var active_tags	= new Array();	//what tags are currently being shown
+var photo_tags	= new Object();	//what tags each photo has
 flowContent();
 
 function flowContent()
@@ -167,11 +227,13 @@ function getHotTags()
 		}).appendTo('#taglist');
 	}).error(function() { alert("error"); });
 }
-	getPhotosByTag("nikon");
+
+active_tags.push("wedding");
+getPhotosByTag("wedding");
+
 function getPhotosByTag(tag_string)
 {
-//	alert(num_w);
-$.getJSON('http://www.flickr.com/services/rest/?',
+$.getJSON('static_api.json',//'http://www.flickr.com/services/rest/?',
 {
 	method:	'flickr.photos.search',
 	format:	'json',
@@ -183,26 +245,30 @@ $.getJSON('http://www.flickr.com/services/rest/?',
 	content_type: '1',
 	media:	'photos',
 	extras:	'owner_name,tags,views,url_sq,url_t,url_s,url_q,url_m,url_n,url_z, url_c, url_l, url_o',
-//	extras:	'description, license, date_upload, date_taken, owner_name, icon_server, original_format, last_update, geo, tags, machine_tags, o_dims, views, media, path_alias, url_sq, url_t, url_s, url_q, url_m, url_n, url_z, url_c, url_l, url_o'
 	per_page: (num_w*7),
 	}, function(data) {
 		var items=[];
 		$.each(data.photos.photo, function(key, val) {
-			var img = "";//'<img src="http://farm'+val.farm+'.staticflickr.com/'+val.server+'/'+val.id+'_'+val.secret+'_s.jpg" class="picimg" width="75" height="75">';
-			var info = [];
-			info.push("<p>");
-			$.each(val, function(sub_key, sub_val) {
-				info.push(sub_key+": "+sub_val+"<br>");	
-			});
-			info.push("</p>");
-			push_to_tagcloud(val.tags);
-		    	//items.push('<div class="container_cell" style="margin: 0; padding: '+computed_margin+'px;"><div class="pic_container_m" style="background-image: url(\''+val.url_n+'\');"></div><div class="pic_info">'+info+'</div><div class="ownername">'+val.ownername+'</div></div>');
-
+			if(typeof val.url_n != "undefined"){
+				var img = "";//'<img src="http://farm'+val.farm+'.staticflickr.com/'+val.server+'/'+val.id+'_'+val.secret+'_s.jpg" class="picimg" width="75" height="75">';
+				var info = [];
+				info.push("<p>");
+				$.each(val, function(sub_key, sub_val) {
+					info.push(sub_key+": "+sub_val+"<br>");	
+				});
+				info.push("</p>");
+				push_to_tagcloud(val.tags);
+				var p_short_info = {};
+				p_short_info.tags=val.tags.split(" ");				
+				p_short_info.active=true;
+				photo_tags['pho_'+val.id]=p_short_info;
+			    	items.push('<div id="pho_'+val.id+'" class="container_cell" style="margin: 0; padding: '+computed_margin+'px;"><div class="pic_container_m" style="background-image: url(\''+val.url_n+'\');">'+val.tags+'</div><div class="pic_info">'+info+'</div><div class="ownername">'+val.ownername+'</div></div>');
+			}
 		});
 		
 
 		prune_tagcloud();
-
+		
 		$("<div>", {
 			'class': 'photo_list_line',
 			html: items.join('')
@@ -210,7 +276,7 @@ $.getJSON('http://www.flickr.com/services/rest/?',
 		$('<div class="clear"></div>').appendTo('#photolist');
 		
 
-		$(tagcloud_top_tags(10)).appendTo('body');
+		$(tagcloud_top_tags(10)).appendTo('#tag_picker');
 
 //:[{"id":"6362872119", "owner":"97042891@N00", "secret":"9704050373", "server":"6237", "farm":7, "title":"Dia da Bandeira - Flag day", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6316531994", "owner":"97042891@N00", "secret":"22d5763d3c", "server":"6105", "farm":7, "title":"Ele \u00e9 Macaco de Imita\u00e7\u00e3o", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6623790845", "owner":"97042891@N00", "secret":"1782dd12e1", "server":"7014", "farm":8, "title":"Canal do Mangue na Avenida Presidente Vargas", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6775887171", "owner":"97042891@N00", "secret":"a3314955b2", "server":"7022", "farm":8, "title":"I \u2665 RIO", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"7111209705", "owner":"97042891@N00", "secret":"289a3db8aa", "server":"5445", "farm":6, "title":"Largo da Carioca", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6979855305", "owner":"97042891@N00", "secret":"d9a282ecd0", "server":"7191", "farm":8, "title":"Foto da Avenida Presidente Vargas { EXPLORE }", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"5237381155", "owner":"12090378@N05", "secret":"0a08960b62", "server":"5203", "farm":6, "title":"Ramon en Otzarreta", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6952189205", "owner":"97042891@N00", "secret":"376327f4f9", "server":"7040", "farm":8, "title":"Confeitaria Colombo - Restaurante Crist\u00f3v\u00e3o", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"2551611185", "owner":"49689920@N00", "secret":"23145808f8", "server":"3083", "farm":4, "title":"quase.c\u00e9u", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"7038965665", "owner":"97042891@N00", "secret":"11048fbc5d", "server":"7264", "farm":8, "title":"Vista Chinesa - P\u00e3o de A\u00e7\u00facar", "ispublic":1, "isfriend":0, "isfamily":0}]}, "stat":"ok"}
 	}).error(function() { alert("error"); });
@@ -237,42 +303,45 @@ function prune_tagcloud()
 	//remove tags with only one entry, as that is no longer useful
 	$.each(tagcloud, function(tag_key, tag_count) {
 			if (tag_count <= 1) {
-				delete tagcloud[tag_key];
+				//delete tagcloud[tag_key];
+			} else {
+				tagsortd.push(pad(tag_count, 4)+"_"+tag_key);
 			}
 		});
+	tagsortd.sort().reverse();
+	//alert(tagsortd);
 }
 
-function get_top_tagcloud(num)
+function pad(num, size) {
+    var s = num+"";
+    while (s.length < size) s = "0" + s;
+    return s;
+}
+
+function get_top_tagcloud(list_num)
 {
-	sorted_tags = {};	
-	$.each(tagcloud, function(tag, val) {
+	var result = [];
+	$.each(tagsortd, function(key, tag_string)
 	{
-		numcloud.push(val);
-	}
-	});
-
-	numcloud.sort(function(a,b){return b-a});
-	$.each(numcloud, function(key, val)
-	{
-		num--;
-		if(num >=0)
+		if(list_num >=0)
 		{
-
+			result.push(tag_string.substr(5));
 		}
+		list_num--;
 	});
-	alert(numcloud.join(" "));
+	return result;
 }
 
 
 function tagcloud_top_tags(num)
 {
-	get_top_tagcloud(num);
+	var top_tags = get_top_tagcloud(num);
 	
 	//alert(tagcloud.join(","));
 	var result=[];
-	$.each(tagcloud, function(key, val)
+	$.each(top_tags, function(key, val)
 	{
-		result.push(key+": "+val);
+		result.push('<a id="tag_link_'+val+'" href="#" onClick="addToTaglist(\''+val+'\'); return false;" class="tag_link">'+val+'</a>');
 	});
 
 	return result.join("<br>");
@@ -282,43 +351,29 @@ function wrapImage(img_url, img_w, img_h){
 	return '<img src="'+img_url+'" class="picimg" width="'+img_w+'" height="'+img_h+'">';
 }
 
-//getHotTags();
+function addToTaglist(tag_name)
+{
+	active_tags.push(tag_name);
+	//alert(active_tags.join(" "));
+	prune_gallery(tag_name);
+}
 
-//http://www.flickr.com/services/rest/?method=flickr.tags.getHotList&format=json&api_key=5eebfd853312f45b9da847cd972da949&count=20
-/*
-var jqxhr = $.getJSON("static_api.json", function() {
-  alert("success");
-}).error(function() { alert("error"); });
-*/
-/*
-var api_secret	= "366e95fbfc4f6135";
-var api_key	= "d0f0e7a58b7bc99f4e452e1e8d9e88d6";
-var api_sig 	= "ea034d05ef6c5a2bf35cdc8bebd078f5"; //"366e95fbfc4f6135api_keyd0f0e7a58b7bc99f4e452e1e8d9e88d6permsdelete";
-var frob	= "72157630524180748-1674f55b9ef643d0-49304623";
-//http://www.flickr.com/services/rest/?method=flickr.people.getPhotos&format=json&api_key=5eebfd853312f45b9da847cd972da949&user_id=49325953@N07
+function prune_gallery(tag_name)
+{
+	alert(tag_name);
+	$.each(photo_tags, function(key, val){
+		//alert(key+" "+val.tags.join(" "));
+		if($.inArray(tag_name, val.tags)==-1)
+		{
+			//alert(key);
+			$("#"+key).hide();
+			$('#tag_link_'+tag_name).hide();
+		}
+	});
+}
 
+function settings_show(){
 
-//token sig: 08c9f409f48b7550c86abf365d73edcd
-//http://flickr.com/services/auth/?api_key=d0f0e7a58b7bc99f4e452e1e8d9e88d6&perms=delete&api_sig=ea034d05ef6c5a2bf35cdc8bebd078f5
-
-//http://www.flickr.com/services/rest/?method=flickr.auth.getToken&format=json&api_key=d0f0e7a58b7bc99f4e452e1e8d9e88d6&frob=72157630521805172-ab244dc255fd594e-49304623&api_sig=08c9f409f48b7550c86abf365d73edcd
-$('#links').append('<p>'+api_secret+'api_key'+api_key+'frob'+frob+'methodflickr.auth.getToken</p>');
-$('#links').append('<p><a href="http://www.flickr.com/services/rest/?method=flickr.auth.getToken&format=json&api_key='+api_key+'&frob='+frob+'&api_sig=15d7e0e1fd6a4ff9f6cf747ebe730f2c" target="_blank">getToken</p>');
-$.getJSON('static_api.json', function(data) {
-  var items = [];
-	items.push('<li>foxshark</li>');
-  $.each(data.photos.photo, function(key, val) {
-	var img = '<img src="http://farm'+val.farm+'.staticflickr.com/'+val.server+'/'+val.id+'_'+val.secret+'_s.jpg" class="picimg" width="75" height="75">';
-    items.push('<li id="' + key.id + '">' + img + val.title + '</li>');
-  });
-	items.push('<li>page '+data.photos.page+'/'+data.photos.pages+'</li>');
-  $('<ul/>', {
-    'class': 'applist',
-    html: items.join('')
-  }).appendTo('#container'); 
-});
-*/
-
+}
 </script>
-
 </html>
