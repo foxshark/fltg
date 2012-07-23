@@ -94,7 +94,13 @@ a.tag_link hover{
 	background: #3333CC;
 	color: #ffffff;
 }
+
+.tag_selector_menu{
+	text-decoration: none;	
+}
+
 #tag_picker{
+	display:none;
 	position:fixed;
 	top: 50px;
 	left: 0px;
@@ -105,6 +111,12 @@ a.tag_link hover{
 	color: #CCC;
 	padding:10px;
 }
+
+#tag_picker .selected{
+	text-decoration:strike;
+	background: #9999ff;	
+}
+
 #settings_pull{
 	position:fixed;
 	top: 0;
@@ -128,8 +140,53 @@ a.tag_link hover{
 	color:#999;
 	background:#000;
 }
+
+#tag_input_form
+{
+	/*border:1px #333 dashed;*/
+	width:410px;
+	height:100px;
+	position:fixed;
+	top: 50%;
+	left: 50%;
+	margin-top:-50px;
+	margin-left: -205px; 
+}
+
+#tag_input_form input{
+	background: #000;
+	border: 1px dashed #333;
+	color: #CCC;
+	font-size: 36px;
+	width: 300px;
+	height: 100px;
+	text-align:center;
+}
+
+#tag_input_form .tag_form_submit{
+	font-size: 36px;
+	font-weight: bold;
+	border:1px solid #000;
+	text-transform:uppercase;
+	text-align:center;
+	width: 100px;
+	height: 100px;
+	float: right;
+	background: #333399;
+	
+}
+
+#tag_input_form .tag_form_submit a{
+	text-decoration:none;
+	color: #000;
+}
 </style>
 <!-- end CSS -->
+
+<div id="tag_input_form">
+	<input id="tag_input_field" type="textfield">
+	<div class="tag_form_submit"><a href="#">Go</a></div>
+</div>
 
 <div id="settings_pull">
 <a id="settings_pull_link" href="#" onClick="settings_show(); return false;">Settings</a>
@@ -229,7 +286,9 @@ function getHotTags()
 }
 
 active_tags.push("wedding");
-getPhotosByTag("wedding");
+
+
+//getPhotosByTag("wedding");
 
 function getPhotosByTag(tag_string)
 {
@@ -275,8 +334,7 @@ $.getJSON('static_api.json',//'http://www.flickr.com/services/rest/?',
 		}).appendTo('#photolist');
 		$('<div class="clear"></div>').appendTo('#photolist');
 		
-
-		$(tagcloud_top_tags(10)).appendTo('#tag_picker');
+		tagcloud_top_tags(10);
 
 //:[{"id":"6362872119", "owner":"97042891@N00", "secret":"9704050373", "server":"6237", "farm":7, "title":"Dia da Bandeira - Flag day", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6316531994", "owner":"97042891@N00", "secret":"22d5763d3c", "server":"6105", "farm":7, "title":"Ele \u00e9 Macaco de Imita\u00e7\u00e3o", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6623790845", "owner":"97042891@N00", "secret":"1782dd12e1", "server":"7014", "farm":8, "title":"Canal do Mangue na Avenida Presidente Vargas", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6775887171", "owner":"97042891@N00", "secret":"a3314955b2", "server":"7022", "farm":8, "title":"I \u2665 RIO", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"7111209705", "owner":"97042891@N00", "secret":"289a3db8aa", "server":"5445", "farm":6, "title":"Largo da Carioca", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6979855305", "owner":"97042891@N00", "secret":"d9a282ecd0", "server":"7191", "farm":8, "title":"Foto da Avenida Presidente Vargas { EXPLORE }", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"5237381155", "owner":"12090378@N05", "secret":"0a08960b62", "server":"5203", "farm":6, "title":"Ramon en Otzarreta", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"6952189205", "owner":"97042891@N00", "secret":"376327f4f9", "server":"7040", "farm":8, "title":"Confeitaria Colombo - Restaurante Crist\u00f3v\u00e3o", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"2551611185", "owner":"49689920@N00", "secret":"23145808f8", "server":"3083", "farm":4, "title":"quase.c\u00e9u", "ispublic":1, "isfriend":0, "isfamily":0}, {"id":"7038965665", "owner":"97042891@N00", "secret":"11048fbc5d", "server":"7264", "farm":8, "title":"Vista Chinesa - P\u00e3o de A\u00e7\u00facar", "ispublic":1, "isfriend":0, "isfamily":0}]}, "stat":"ok"}
 	}).error(function() { alert("error"); });
@@ -338,13 +396,18 @@ function tagcloud_top_tags(num)
 	var top_tags = get_top_tagcloud(num);
 	
 	//alert(tagcloud.join(","));
-	var result=[];
+	var list_items=[];
 	$.each(top_tags, function(key, val)
 	{
-		result.push('<a id="tag_link_'+val+'" href="#" onClick="addToTaglist(\''+val+'\'); return false;" class="tag_link">'+val+'</a>');
+		list_items.push('<li><a id="tag_link_'+val+'" href="#" onClick="addToTaglist(\''+val+'\'); return false;" class="tag_link">'+val+'</a></li>');
 	});
+	
 
-	return result.join("<br>");
+
+		$("<ul>", {
+			'class': 'tag_selector_menu',
+			html: list_items.join('')
+		}).appendTo('#tag_picker');
 }
 
 function wrapImage(img_url, img_w, img_h){
@@ -360,20 +423,20 @@ function addToTaglist(tag_name)
 
 function prune_gallery(tag_name)
 {
-	alert(tag_name);
+	//alert(tag_name);
 	$.each(photo_tags, function(key, val){
 		//alert(key+" "+val.tags.join(" "));
 		if($.inArray(tag_name, val.tags)==-1)
 		{
 			//alert(key);
-			$("#"+key).hide();
-			$('#tag_link_'+tag_name).hide();
+			$("#"+key).addClass('selected');//hide();
+			$('#tag_link_'+tag_name).addClass('selected');//.hide();
 		}
 	});
 }
 
 function settings_show(){
-
+	$("#tag_picker").show();
 }
 </script>
 </html>
