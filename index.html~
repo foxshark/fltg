@@ -69,7 +69,8 @@ body{
 	font-size:12px;
 	background-repeat:no-repeat;
 	background-position:center center;
-	border: 1px solid #77FF77;
+	border: 1px solid #222;
+	background-color:#111;
 	background-size:cover;
 	overflow:hidden;
 }
@@ -112,8 +113,11 @@ a.tag_link hover{
 	padding:10px;
 }
 
+#tag_pickr.tag_selector_menu{
+	list-style-type: none;
+}
+
 #tag_picker .selected{
-	text-decoration:strike;
 	background: #9999ff;	
 }
 
@@ -129,6 +133,7 @@ a.tag_link hover{
 	text-transform:uppercase;
 	font-family: helvetica, arial, san-serif;
 	font-size: 8px;
+	display:none;
 }
 
 #settings_pull a, #settings_pull a:visited{
@@ -155,16 +160,17 @@ a.tag_link hover{
 
 #tag_input_form input{
 	background: #000;
-	border: 1px dashed #333;
+	border: 3px dashed #333;
 	color: #CCC;
 	font-size: 36px;
 	width: 300px;
 	height: 100px;
 	text-align:center;
+	text-transform:uppercase;
 }
 
 #tag_input_form .tag_form_submit{
-	font-size: 36px;
+	font-size: 24px;
 	font-weight: bold;
 	border:1px solid #000;
 	text-transform:uppercase;
@@ -180,12 +186,28 @@ a.tag_link hover{
 	text-decoration:none;
 	color: #000;
 }
+
+#load_notice{
+	display: none;
+	width: 300px;
+	height: 100px;
+	position:fixed;
+	top: 50%;
+	left: 50%;
+	margin-top:-50px;
+	margin-left: -150px;
+	border: 3px dashed #333;
+	color:#999;
+	font-size:36px;
+	text-align:center;
+	text-transform:uppercase;
+}
 </style>
 <!-- end CSS -->
-
+<div id="load_notice">Loading...</div>
 <div id="tag_input_form">
 	<input id="tag_input_field" type="textfield">
-	<div class="tag_form_submit"><a href="#">Go</a></div>
+	<div class="tag_form_submit"><a href="#" onClick="tag_form_submit(); return false;">Go</a></div>
 </div>
 
 <div id="settings_pull">
@@ -288,11 +310,9 @@ function getHotTags()
 active_tags.push("wedding");
 
 
-//getPhotosByTag("wedding");
-
 function getPhotosByTag(tag_string)
 {
-$.getJSON('static_api.json',//'http://www.flickr.com/services/rest/?',
+$.getJSON('http://www.flickr.com/services/rest/?', //'static_api.json',//
 {
 	method:	'flickr.photos.search',
 	format:	'json',
@@ -306,6 +326,8 @@ $.getJSON('static_api.json',//'http://www.flickr.com/services/rest/?',
 	extras:	'owner_name,tags,views,url_sq,url_t,url_s,url_q,url_m,url_n,url_z, url_c, url_l, url_o',
 	per_page: (num_w*7),
 	}, function(data) {
+		$('#load_notice').hide();
+		$('#settings_pull').show();
 		var items=[];
 		$.each(data.photos.photo, function(key, val) {
 			if(typeof val.url_n != "undefined"){
@@ -321,9 +343,9 @@ $.getJSON('static_api.json',//'http://www.flickr.com/services/rest/?',
 				p_short_info.tags=val.tags.split(" ");				
 				p_short_info.active=true;
 				photo_tags['pho_'+val.id]=p_short_info;
-			    	items.push('<div id="pho_'+val.id+'" class="container_cell" style="margin: 0; padding: '+computed_margin+'px;"><div class="pic_container_m" style="background-image: url(\''+val.url_n+'\');">'+val.tags+'</div><div class="pic_info">'+info+'</div><div class="ownername">'+val.ownername+'</div></div>');
+			    	items.push('<div id="pho_'+val.id+'" class="container_cell" style="margin: 0; padding: '+computed_margin+'px;"><div class="pic_container_m" style="background-image: url(\''+val.url_n+'\');"><!--'+val.tags+'--></div><div class="pic_info">'+info+'</div><div class="ownername">'+val.ownername+'</div></div>');
 			}
-		});
+		});items.push('<div id="pho_nextset" class="container_cell" onClick="refreshFlickrCall()" style="margin: 0; padding: '+computed_margin+'px;"><div class="pic_container_m">More Images</div></div>');
 		
 
 		prune_tagcloud();
@@ -429,14 +451,29 @@ function prune_gallery(tag_name)
 		if($.inArray(tag_name, val.tags)==-1)
 		{
 			//alert(key);
-			$("#"+key).addClass('selected');//hide();
+			$("#"+key).hide();
 			$('#tag_link_'+tag_name).addClass('selected');//.hide();
 		}
 	});
 }
 
 function settings_show(){
-	$("#tag_picker").show();
+	$("#tag_picker").toggle();
+}
+
+function tag_form_submit(){
+	var search_tag = $('#tag_input_field').val();
+	//alert(search_tag);
+	$('#tag_input_form').hide();
+	$('#load_notice').show();
+	getPhotosByTag("wedding");
+};
+
+function refreshFlickrCall()
+{
+	$('#photolist').html('');
+	$('#tag_picker').html('');
+	getPhotosByTag(active_tags.join(" "));
 }
 </script>
 </html>
